@@ -13,7 +13,7 @@ function setStatus(text,state=''){status=text;kind=state;drawStatus();}
 function drawStatus(){
  let button=$('#cloud-button');if(!button){button=document.createElement('button');button.id='cloud-button';button.className='button small cloud-button';button.dataset.sync='open';$('.topbar-actions').prepend(button);}
  button.textContent=status;button.dataset.state=kind;button.title=user?`${user.email||'已登录'} · ${status}`:'登录后同步手机与电脑';button.setAttribute('aria-label','云同步：'+status);
- const settings=$('#settings-form');if(settings&&!$('#cloud-settings-entry')){const section=document.createElement('section');section.id='cloud-settings-entry';section.className='settings-card cloud-settings-entry';section.innerHTML='<div><h2>手机与电脑同步</h2><p>登录同一个账号，任务、倒数日和设置自动合并。</p></div><button class="button soft" type="button" data-sync="open">管理同步</button>';settings.before(section);}
+ const settings=$('#settings-form');if(settings&&!$('#cloud-settings-entry')){const section=document.createElement('section');section.id='cloud-settings-entry';section.className='settings-card cloud-settings-entry';section.innerHTML='<h2>手机与电脑同步</h2><button class="button soft" type="button" data-sync="open">管理同步</button>';settings.before(section);}
  if($('#cloud-live-status'))$('#cloud-live-status').textContent=status+(lastSync?' · 上次成功 '+lastSync:'');
  if(settings&&getJSON(PRE_SYNC)?.state&&!$('#cloud-backup-button')){const backup=document.createElement('button');backup.id='cloud-backup-button';backup.className='button small';backup.type='button';backup.dataset.sync='backup';backup.textContent='下载首次同步前备份';$('#cloud-settings-entry').append(backup);}
 }
@@ -61,7 +61,7 @@ function schedule(){clearTimeout(timer);timer=setTimeout(()=>{sync();},1200);}
 async function attach(){
  if(!user||busy)return;busy=true;setStatus('读取云端…');const currentEpoch=epoch;
  try{const remote=await readRemote();if(currentEpoch!==epoch)return;const local=D.getState(),binding=getJSON(BINDING),other=binding&&(binding.userId!==user.id||binding.url!==config.url);
-  D.showDialog('确认首次同步',`<div class="dialog-body cloud-panel"><p>本机有 ${local.tasks.length} 项任务、${local.milestones.length} 个重要日期。<br>云端有 ${remote.data.tasks.length} 项任务、${remote.data.milestones.length} 个重要日期。</p><p>${other?'当前登录的是另一个账号。请选择读取该账号的云端计划，旧计划会保留本机备份。':'合并会保留双方的不同任务；云端已有计划时采用云端的专注时段设置。同一内容有冲突时会让你选择。'}</p><p class="cloud-setup-note">操作前会自动保留一份本机备份，也可先从偏好设置导出 JSON 备份。</p></div><div class="dialog-footer cloud-footer"><button class="button" data-action="close-dialog">暂不开启</button><button class="button" id="cloud-use-remote">只读取云端</button>${!other?'<button class="button primary" id="cloud-merge-first">合并并开启</button>':''}</div>`);
+  D.showDialog('确认首次同步',`<div class="dialog-body cloud-panel"><p>本机有 ${local.tasks.length} 项任务、${local.milestones.length} 个重要日期。<br>云端有 ${remote.data.tasks.length} 项任务、${remote.data.milestones.length} 个重要日期。</p><p>${other?'当前登录的是另一个账号。请选择读取该账号的云端计划，旧计划会保留本机备份。':'合并会保留双方的不同任务；云端已有计划时采用云端的时段设置。同一内容有冲突时会让你选择。'}</p><p class="cloud-setup-note">操作前会自动保留一份本机备份，也可先从偏好设置导出 JSON 备份。</p></div><div class="dialog-footer cloud-footer"><button class="button" data-action="close-dialog">暂不开启</button><button class="button" id="cloud-use-remote">只读取云端</button>${!other?'<button class="button primary" id="cloud-merge-first">合并并开启</button>':''}</div>`);
   const activate=mode=>{
    try{localStorage.setItem(PRE_SYNC,JSON.stringify({savedAt:new Date().toISOString(),binding,state:D.getState()}));const snapshot=D.getState();let result;
     if(mode==='remote')result={data:remote.data,conflicts:[]};
@@ -75,8 +75,8 @@ async function attach(){
   $('#cloud-use-remote').onclick=()=>activate('remote');if($('#cloud-merge-first'))$('#cloud-merge-first').onclick=()=>activate('merge');setStatus('请确认首次同步');
  }catch(error){fail(error);openPanel();}finally{busy=false;}
 }
-const FIELD_LABELS={title:'任务名称',done:'完成状态',minutes:'预计时长',date:'计划日期',slot:'专注时段',priority:'优先级',due:'截止日期',note:'备注',settings:'偏好设置',exerciseDone:'锻炼打卡',courseHints:'课程占用提示',semester:'学期开始',exercise:'锻炼时段',exerciseEnabled:'显示锻炼',morning:'上午',afternoon:'下午',evening:'晚上'};
-function valueText(value){if(value===undefined)return '已删除';if(value===true)return '是 / 已完成';if(value===false)return '否 / 未完成';if(typeof value==='object')return JSON.stringify(value);return String(value||'留空');}
+const FIELD_LABELS={title:'任务名称',done:'完成状态',date:'计划日期',slot:'时段',priority:'优先级',due:'截止日期',note:'备注',settings:'偏好设置',exerciseDone:'锻炼打卡',courseHints:'课程占用提示',semester:'学期开始',exercise:'锻炼时段',exerciseEnabled:'显示锻炼',morning:'上午',afternoon:'下午',evening:'晚上'};
+function valueText(value){if(value===undefined)return '已删除';if(value===true)return '是 / 已完成';if(value===false)return '否 / 未完成';if(typeof value==='object')return JSON.stringify(value,(key,field)=>key==='minutes'?undefined:field);return String(value||'留空');}
 function showConflicts(){
  if(!pending)return openPanel();const item=pending;
  D.showDialog('选择要保留的修改',`<form id="cloud-conflict-form"><div class="dialog-body cloud-panel"><p>以下内容在本机和云端都被修改，选择后继续同步。</p>${item.merged.conflicts.map((c,i)=>{const task=[...item.local.tasks,...item.local.milestones,...item.remote.data.tasks,...item.remote.data.milestones].find(t=>t.id===c.path[1]);const label=task?.title||FIELD_LABELS[c.path[0]]||'计划';return `<div class="cloud-conflict"><strong>${esc(label)} · ${esc(FIELD_LABELS[c.path.at(-1)]||'整项内容')}</strong><label><input type="radio" name="conflict-${i}" value="local" required>本机：${esc(valueText(c.local))}</label><label><input type="radio" name="conflict-${i}" value="remote" required>云端：${esc(valueText(c.remote))}</label></div>`;}).join('')}<div id="cloud-conflict-error" class="form-error"></div></div><div class="dialog-footer"><button type="button" class="button" data-action="close-dialog">稍后处理</button><button type="submit" class="button primary">保留选择并同步</button></div></form>`);
@@ -92,7 +92,7 @@ async function testConnection(){
 }
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-sync]');if(!b)return;
  const action=b.dataset.sync;
- if(action==='backup'){try{const data=D.validateState(getJSON(PRE_SYNC)?.state),url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='dayloom-before-sync.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}catch(error){D.toast('无法读取同步前备份：'+errorMessage(error));}return;}
+ if(action==='backup'){try{const data=getJSON(PRE_SYNC)?.state;D.validateState(data);const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='dayloom-before-sync.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}catch(error){D.toast('无法读取同步前备份：'+errorMessage(error));}return;}
  if(action==='open')return openPanel();if(action==='attach')return attach();if(action==='resolve')return showConflicts();if(action==='connection-test')return testConnection();
  if(action==='now'){$('#editor').close();return sync();}
  if(action==='logout'){epoch++;enabled=false;pending=null;try{const {error}=await client.auth.signOut({scope:'local'});if(error)throw error;user=null;$('#editor').close();setStatus('登录同步');D.toast('已退出，本机计划仍保留');}catch(error){fail(error);openPanel();}}

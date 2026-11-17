@@ -5,6 +5,14 @@ const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 export function mergePlans(base,local,remote){
  const conflicts=[];
  function merge(b,l,r,path){
+  // An old estimate is backup metadata. It must never create a scheduling or edit conflict.
+  if(path[0]==='tasks'&&path.length===2){
+    const historical=r?.minutes??l?.minutes??b?.minutes;
+    if(historical!==undefined){
+      const keep=row=>row===undefined?undefined:{...row,minutes:historical};
+      b=keep(b);l=keep(l);r=keep(r);
+    }
+  }
   if(equal(l,r))return copy(l);
   if(equal(l,b))return copy(r);
   if(equal(r,b))return copy(l);
